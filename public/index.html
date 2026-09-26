@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICU 多语言消息审计</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>ICU 多语言消息审计</h1>
+    <p class="sub">
+      粘贴基准与 1～4 份译文 JSON（消息键 → ICU MessageFormat 字符串的平铺对象），
+      逐键比对缺失 / 额外消息、语法错误与参数签名（普通、number、date、time、select、plural、selectordinal）。
+    </p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>基准消息</h2>
+        <span class="hint">结果中以「基准」标记</span>
+      </div>
+      <textarea id="baseline" rows="8" spellcheck="false"
+        placeholder='{"app.title":"消息审计台","user.greeting":"你好，{name}！"}'></textarea>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>译文（1～4 份）</h2>
+        <div class="head-actions">
+          <button id="add-translation" type="button">＋ 添加译文</button>
+          <button id="load-example" type="button" title="填入演示数据">填入示例</button>
+        </div>
+      </div>
+      <div id="translations"></div>
+    </section>
+
+    <div class="actions">
+      <button id="run" class="primary" type="button">开始审计</button>
+      <span id="status" role="status"></span>
+    </div>
+
+    <section id="results" class="panel hidden">
+      <div class="panel-head">
+        <h2>审计结果</h2>
+        <label class="filter">
+          按错误类型筛选：
+          <select id="type-filter"><option value="">全部类型</option></select>
+        </label>
+      </div>
+      <div id="summary" class="summary"></div>
+      <div class="table-wrap">
+        <table id="findings">
+          <thead>
+            <tr><th>语言</th><th>消息键</th><th>错误类型</th><th>差异详情</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="no-findings" class="hidden ok">🎉 未发现任何问题。</p>
+      <p id="filtered-empty" class="hidden">当前筛选条件下没有结果。</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>本地运行，数据不离开本机 · <a href="http://localhost:3000">localhost:3000</a></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "app.title": "メッセージ監査",
+  "user.greeting": "{gender, select, female{彼女} male{彼} other{彼ら}} から {name} さんへ！",
+  "inbox.summary": "{name} さん、新着は {count, plural, =0{ありません} other{# 件あります}}。",
+  "meeting.time": "会議時間：{start, date, medium} {start, time, short}",
+  "rank.label": "あなたは {rank, selectordinal, other{# 位}} です",
+  "invite.text": "{count, plural, other{# 人を招待}}",
+  "quota.used": "使用率 {used, number, percent}"
+}

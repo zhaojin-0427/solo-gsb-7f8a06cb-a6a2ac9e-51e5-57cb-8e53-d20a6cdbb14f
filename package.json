@@ -1,0 +1,15 @@
+{
+  "name": "icu-message-audit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "本地多语言 ICU MessageFormat 消息审计工具",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^2.7.8",
+    "express": "^4.21.2"
+  }
+}

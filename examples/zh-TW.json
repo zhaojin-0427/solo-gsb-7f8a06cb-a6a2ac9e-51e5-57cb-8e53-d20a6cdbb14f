@@ -1,0 +1,10 @@
+{
+  "app.title": "訊息審計台",
+  "user.greeting": "{gender, select, female{她} male{他} other{TA}} 向你問好！",
+  "inbox.summary": "{name}，你有 {count, plural, one{1 條新消息} other{# 條新消息}}。",
+  "meeting.time": "會議時間：{start, date, medium}",
+  "rank.label": "你是第 {rank, selectordinal, one{# 名} two{# 名} other{# 名}}",
+  "invite.text": "邀請 {count, plural, one{# 人} other{# 人}",
+  "quota.used": "已用 {used}",
+  "legacy.banner": "這個鍵基準裡沒有"
+}

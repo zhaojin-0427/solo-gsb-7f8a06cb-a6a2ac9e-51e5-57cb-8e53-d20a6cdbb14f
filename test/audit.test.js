@@ -161,17 +161,155 @@ test('同名 select 多处出现：按位置比较选项，不错配', () => {
   assert.ok(sel[1].detail.includes('缺少选项：b') && sel[1].detail.includes('多出选项：a'));
 });
 
-test('嵌套分支内的同名 plural：按嵌套路径定位 =n 差异', () => {
+test('嵌套分支内的同名 plural：按结构路径定位 =n 差异', () => {
   const findings = run(
     { k: '{g, select, male{{n, plural, =0{零} other{#}}} other{{n, plural, one{x} other{o}}}}' },
     { k: '{g, select, male{{n, plural, one{x} other{o}}} other{{n, plural, =0{零} other{#}}}}' },
   );
   const exact = ofType(findings, 'exact');
   assert.equal(exact.length, 2);
+  // 两个 n 分别位于 male / other 选项下，各为该路径第 1 处，靠选项名区分而非全局序号
   assert.ok(exact[0].detail.includes('g(select)=male › n(plural)'));
+  assert.ok(!exact[0].detail.includes('第 2 处'));
   assert.ok(exact[0].detail.includes('缺少显式选项：=0'));
-  assert.ok(exact[1].detail.includes('g(select)=other › n(plural)（第 2 处）'));
+  assert.ok(exact[1].detail.includes('g(select)=other › n(plural)'));
+  assert.ok(!exact[1].detail.includes('第 2 处'));
   assert.ok(exact[1].detail.includes('多出显式选项：=0'));
+});
+
+test('整处新增同名同类型 select 节点：其他选项完整也须报告', () => {
+  const findings = run(
+    { k: '{g, select, male{他} other{TA}}' },
+    { k: '{g, select, male{他} other{TA}} / {g, select, male{彼} other{彼ら}}' },
+    'ja',
+  );
+  const arg = ofType(findings, 'arg');
+  assert.equal(arg.length, 1);
+  assert.ok(arg[0].detail.includes('分支节点「g」'));
+  assert.ok(arg[0].detail.includes('select'));
+  assert.ok(arg[0].detail.includes('g(select)（第 2 处）'));
+  assert.ok(arg[0].detail.includes('基准 0 处，译文 1 处'), arg[0].detail);
+  assert.equal(arg[0].language, 'ja');
+  assert.equal(arg[0].key, 'k');
+  // 选项完整 → 不应再有 select 选项差异
+  assert.equal(ofType(findings, 'select').length, 0);
+});
+
+test('整处删除同名同类型 plural 节点：须报告基准/译文数量', () => {
+  const findings = run(
+    { k: '{n, plural, =0{零} other{#}} / {n, plural, =0{零} other{#}}' },
+    { k: '{n, plural, =0{零} other{#}}' },
+  );
+  const arg = ofType(findings, 'arg');
+  assert.equal(arg.length, 1);
+  assert.ok(arg[0].detail.includes('分支节点「n」'));
+  assert.ok(arg[0].detail.includes('plural'));
+  assert.ok(arg[0].detail.includes('第 2 处'));
+  assert.ok(arg[0].detail.includes('基准 1 处，译文 0 处'), arg[0].detail);
+});
+
+test('selectordinal 整处增删同样计数', () => {
+  const findings = run(
+    { k: '{r, selectordinal, one{#} other{#}}' },
+    { k: '{r, selectordinal, one{#} other{#}} / {r, selectordinal, =2{二} other{#}}' },
+  );
+  const arg = ofType(findings, 'arg');
+  assert.equal(arg.length, 1);
+  assert.ok(arg[0].detail.includes('selectordinal'));
+  assert.ok(arg[0].detail.includes('基准 0 处，译文 1 处'));
+});
+
+test('不同路径的整处增减不能相互抵消', () => {
+  // male 选项下多出第 2 个 c(plural)，other 选项下删掉 d(plural)
+  const findings = run(
+    {
+      k: '{a, select, x{{c, plural, other{#}}} other{{d, plural, other{#}}}}',
+    },
+    {
+      k: '{a, select, x{{c, plural, other{#}} {c, plural, other{#}}} other{无}}',
+    },
+  );
+  const arg = ofType(findings, 'arg');
+  // 缺少参数 d（参数层）+ d 节点删除 + c 节点新增，共 3 条
+  assert.equal(arg.length, 3);
+  assert.ok(arg.some((f) => f.detail.includes('缺少参数「d」')));
+  assert.ok(arg.some((f) =>
+    f.detail.includes('a(select)=other › d(plural)') &&
+    f.detail.includes('基准 1 处，译文 0 处')));
+  assert.ok(arg.some((f) =>
+    f.detail.includes('a(select)=x › c(plural)（第 2 处）') &&
+    f.detail.includes('基准 0 处，译文 1 处')));
+});
+
+test('选项书写顺序不改变结构路径：调换选项顺序不报差异', () => {
+  const findings = run(
+    { k: '{g, select, male{{n, plural, =0{零} other{#}}} other{{n, plural, other{#}}}}' },
+    { k: '{g, select, other{{n, plural, other{#}}} male{{n, plural, =0{零} other{#}}}}' },
+  );
+  assert.deepEqual(findings, []);
+});
+
+test('数量一致的同路径节点仍检查 select 选项、=n 与 other，类别可随语言变化', () => {
+  const findings = run(
+    {
+      k: '{g, select, male{他} female{她} other{TA}}；' +
+        '{n, plural, =0{零} one{一} other{#}}',
+    },
+    {
+      k: '{g, select, male{彼} other{彼ら}}；' +
+        '{n, plural, =0{零} two{اثنان} few{قلة} many{كثرة} other{#}}',
+    },
+    'ar',
+  );
+  // select 缺少 female；=0 一致；阿拉伯语复数类别不同不报错
+  const sel = ofType(findings, 'select');
+  assert.equal(sel.length, 1);
+  assert.ok(sel[0].detail.includes('缺少选项：female'));
+  assert.deepEqual(ofType(findings, 'exact'), []);
+  assert.deepEqual(ofType(findings, 'arg'), []);
+  assert.deepEqual(ofType(findings, 'other'), []);
+});
+
+test('plural 改为 selectordinal 已由用法不一致报告，不再重复计数', () => {
+  const findings = run(
+    { k: '{n, plural, =0{零} other{#}}' },
+    { k: '{n, selectordinal, =0{零} other{#}}' },
+  );
+  const arg = ofType(findings, 'arg');
+  assert.equal(arg.length, 1);
+  assert.ok(arg[0].detail.includes('plural'));
+  assert.ok(arg[0].detail.includes('selectordinal'));
+});
+
+test('复数祖先下的嵌套节点不按路径计数：类别随语言增减不报错', () => {
+  const findings = run(
+    { k: '{n, plural, one{{g, select, a{A} other{O}}} other{{g, select, a{A} other{O}}}}' },
+    { k: '{n, plural, one{{g, select, a{A} other{O}}} few{{g, select, a{A} other{O}}} many{{g, select, a{A} other{O}}} other{{g, select, a{A} other{O}}}}' },
+    'ar',
+  );
+  assert.deepEqual(findings, []);
+});
+
+test('复数祖先下的嵌套节点仍按名配对检查 select 选项', () => {
+  const findings = run(
+    { k: '{n, plural, one{{g, select, a{A} other{O}}} other{{g, select, a{A} other{O}}}}' },
+    { k: '{n, plural, one{{g, select, a{A}}} other{{g, select, a{A} other{O}}}}' },
+  );
+  const sel = ofType(findings, 'select');
+  assert.equal(sel.length, 1);
+  assert.ok(sel[0].detail.includes('n(plural)=one › g(select)'));
+  assert.ok(sel[0].detail.includes('缺少选项：other'));
+});
+
+test('select 祖先下任意深度的 plural 整处增删仍按路径计数', () => {
+  const findings = run(
+    { k: '{g, select, x{{n, plural, other{#}}} other{{n, plural, other{#}}}}' },
+    { k: '{g, select, x{{n, plural, other{#}} {n, plural, other{#}}} other{{n, plural, other{#}}}}' },
+  );
+  const arg = ofType(findings, 'arg');
+  assert.equal(arg.length, 1);
+  assert.ok(arg[0].detail.includes('g(select)=x › n(plural)（第 2 处）'));
+  assert.ok(arg[0].detail.includes('基准 0 处，译文 1 处'));
 });
 
 test('同名 selectordinal 多处出现：=n 按位置比较', () => {
